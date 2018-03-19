@@ -1,10 +1,12 @@
 {
   "name": "snake-game",
   "version": "1.0.0",
-  "description": "",
+  "description": "A minimal snake game in plain JS with React",
   "main": "index.js",
   "scripts": {
-    "start": "webpack-dev-server"
+    "start": "webpack-dev-server",
+    "build": "webpack",
+    "now": "npm run build && now"
   },
   "author": "Ebuall",
   "license": "ISC",
