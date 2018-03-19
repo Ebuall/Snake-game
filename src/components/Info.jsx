@@ -1,7 +1,7 @@
 import * as React from "react"
 import { Dir } from "../model"
 
-export const Info = ({ length, dir, /* nextDir, */ scale, width, border/* , gameOver */ }) =>
+export const Info = ({ length, dir, /* nextDir, */ scale, width, border /*, gameState */ }) =>
   <div style={{
     background: "lightgray",
     padding: "15px",
@@ -11,6 +11,6 @@ export const Info = ({ length, dir, /* nextDir, */ scale, width, border/* , game
   }}>
     <div>Length: {length}</div>
     <div>Direction: {Dir[dir]}</div>
-    {/* <div>Next Direction: {Dir[nextDir]}</div>
-    <div>Game Over: {String(gameOver)}</div> */}
+    {/* <div>Next Direction: {Dir[nextDir]}</div> */}
+    {/* <div>Game State: {String(gameState)}</div> */}
   </div>

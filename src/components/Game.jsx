@@ -9,18 +9,20 @@ import { Field } from "./Field"
 import { Snake } from "./Snake"
 import { Info } from "./Info"
 import { Pix } from "./Pix"
+import { Overlay } from "./Overlay"
 
-const GameState = {
+export const GameState = {
   Init: 0,
-  Plaing: 1,
-  Over: 2,
+  Playing: 1,
+  Paused: 2,
+  Over: 3,
 }
 
 export const ctx = {
   border: 10,
   height: 15,
   width: 20,
-  scale: 20,
+  scale: 25,
   timer: 200,
 }
 
@@ -46,7 +48,7 @@ function generateFood(snake) {
   return food
 }
 
-function getInitialState() {
+function getFreshState() {
   const x = ctx.width / 2
   const pieces = List.of(
     point(x, 2),
@@ -59,26 +61,41 @@ function getInitialState() {
     pieces,
     gameState: GameState.Init,
     food: generateFood(pieces),
+    gameLoop: null,
   }
 }
 
 export class Game extends React.Component {
   constructor(props) {
     super(props)
-    this.state = getInitialState()
-    this.gameLoop = undefined
+    this.state = getFreshState()
+
     this.handleKeys = this.handleKeys.bind(this)
     this.tick = this.tick.bind(this)
+    this.reset = this.reset.bind(this)
+    this.pause = this.pause.bind(this)
+    this.startLoop = this.startLoop.bind(this)
   }
 
-  start() {
-    this.stop()
-    this.setState(getInitialState)
-    this.gameLoop = setInterval(this.tick, ctx.timer)
+  reset() {
+    this.stop(GameState.Init)
+    this.setState(getFreshState)
   }
 
-  stop() {
-    clearInterval(this.gameLoop)
+  startLoop() {
+    this.setState({
+      gameLoop: setInterval(this.tick, ctx.timer),
+      gameState: GameState.Playing,
+    })
+  }
+
+  pause() {
+    this.stop(GameState.Paused)
+  }
+
+  stop(gameState) {
+    clearInterval(this.state.gameLoop)
+    this.setState({ gameLoop: null, gameState })
   }
 
   moveSnake(dir, pieces, food) {
@@ -90,6 +107,7 @@ export class Game extends React.Component {
     } else {
       newTail = pieces.butLast()
     }
+
     if (
       hitTheWall(newHead) ||
       hitTheTail(newHead, newTail)
@@ -104,25 +122,33 @@ export class Game extends React.Component {
   }
 
   tick() {
-    this.setState(state => {
-      const dir = state.nextDir
-      return this.moveSnake(dir, state.pieces, state.food)
-        .map(({ pieces, eatenFood }) => {
-          let food = state.food
-          if (eatenFood) {
-            food = generateFood(pieces)
-          }
-          return { dir, pieces, food }
-        })
-        .onErr(e => console.log(e))
-        .getOrElse(() => {
-          this.stop()
-          return { gameState: GameState.Over }
-        })
-    })
+    const dir = this.state.nextDir
+    this.moveSnake(dir, this.state.pieces, this.state.food)
+      .onOk(({ pieces, eatenFood }) => {
+        let food = this.state.food
+        if (eatenFood) {
+          food = generateFood(pieces)
+        }
+        this.setState({ dir, pieces, food })
+      })
+      .onErr(e => {
+        console.log(e)
+        this.stop(GameState.Over)
+      })
+  }
+
+  anykey(ev) {
+    switch (this.state.gameState) {
+      case GameState.Over:
+        this.reset() // fallthrough
+      case GameState.Init:
+      case GameState.Paused:
+        this.startLoop()
+    }
   }
 
   handleKeys(ev) {
+    this.anykey(ev)
     let nextDir
     switch (ev.key) {
       case "ArrowUp":
@@ -135,18 +161,31 @@ export class Game extends React.Component {
         nextDir = Dir.Left; break
       default: return
     }
-    if (!Dir.isBackwards(this.state.dir, nextDir)) {
-      this.setState({ nextDir })
-    }
+
+    this.setState(state => {
+      if (!Dir.isBackwards(state.dir, nextDir)) {
+        return { nextDir }
+      } else {
+        return state
+      }
+    })
   }
 
   componentDidMount() {
-    this.start()
     window.addEventListener("keypress", this.handleKeys)
   }
 
   componentWillUnmount() {
     window.removeEventListener("keypress", this.handleKeys)
+  }
+
+  pauseButton() {
+    switch (this.state.gameState) {
+      case GameState.Playing:
+        return <button onClick={this.pause}>Pause</button>
+      case GameState.Paused:
+        return <button onClick={this.startLoop}>Resume</button>
+    }
   }
 
   render() {
@@ -158,11 +197,12 @@ export class Game extends React.Component {
           {...this.state}
         />
         <Field {...ctx}>
-          {this.state.food && <Pix color="green" {...this.state.food} {...ctx} />}
+          <Pix color="green" {...this.state.food} {...ctx} />
           <Snake {...ctx} {...this.state} />
+          <Overlay gameState={this.state.gameState} />
         </Field>
-        <button onClick={() => this.start()}>Reset</button>
-        <button onClick={() => this.stop()}>Stop</button>
+        <button onClick={this.reset}>Reset</button>
+        {this.pauseButton()}
       </div>
     )
   }
