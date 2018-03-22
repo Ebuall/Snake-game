@@ -11,7 +11,6 @@
   "author": "Ebuall",
   "license": "ISC",
   "dependencies": {
-    "immutable": "^3.8.2",
     "react": "^16.3.0-alpha.2",
     "react-dom": "^16.3.0-alpha.2"
   },

@@ -1,8 +1,6 @@
 import * as React from "react"
 
-import { List } from "immutable"
 import { Dir, point } from "../model"
-import * as Result from "../Result"
 import { randomInt } from "../random"
 
 import { Field } from "./Field"
@@ -50,11 +48,11 @@ function generateFood(snake) {
 
 function getFreshState() {
   const x = ctx.width / 2
-  const pieces = List.of(
-    point(x, 2),
-    point(x, 1),
+  const pieces = [
     point(x, 0),
-  )
+    point(x, 1),
+    point(x, 2),
+  ]
   return {
     dir: Dir.Up,
     nextDir: Dir.Up,
@@ -99,42 +97,43 @@ export class Game extends React.Component {
   }
 
   moveSnake(dir, pieces, food) {
-    const newHead = pieces.first().move(dir)
+    const newHead = pieces[pieces.length - 1].move(dir)
     let eatenFood = false
     let newTail = pieces
     if (newHead.equals(food)) {
       eatenFood = true
     } else {
-      newTail = pieces.butLast()
+      newTail = pieces.slice(1)
     }
 
     if (
       hitTheWall(newHead) ||
       hitTheTail(newHead, newTail)
     ) {
-      return Result.err("Game Over")
+      throw new Error("Game Over")
     } else {
-      return Result.ok({
+      newTail.push(newHead)
+      return {
         eatenFood,
-        pieces: newTail.unshift(newHead),
-      })
+        pieces: newTail,
+      }
     }
   }
 
   tick() {
     const dir = this.state.nextDir
-    this.moveSnake(dir, this.state.pieces, this.state.food)
-      .onOk(({ pieces, eatenFood }) => {
-        let food = this.state.food
-        if (eatenFood) {
-          food = generateFood(pieces)
-        }
-        this.setState({ dir, pieces, food })
-      })
-      .onErr(e => {
-        console.log(e)
-        this.stop(GameState.Over)
-      })
+    try {
+      const { pieces, eatenFood } =
+        this.moveSnake(dir, this.state.pieces, this.state.food)
+      let food = this.state.food
+      if (eatenFood) {
+        food = generateFood(pieces)
+      }
+      this.setState({ dir, pieces, food })
+    } catch (e) {
+      console.log(e)
+      this.stop(GameState.Over)
+    }
   }
 
   anykey(ev) {
@@ -192,7 +191,7 @@ export class Game extends React.Component {
     return (
       <div>
         <Info
-          length={this.state.pieces.size}
+          length={this.state.pieces.length}
           {...ctx}
           {...this.state}
         />
